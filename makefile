@@ -1,20 +1,26 @@
 all: KaratsubaMul.o KaratsubaTest.o ReadStrings.o
-	gcc KaratsubaMul.o KaratsubaTest.o ReadStrings.o -l m -o K.exe
+	gcc -O2 KaratsubaMul.o KaratsubaTest.o ReadStrings.o -l m -o K.exe
+	@echo 'Usage option one: make run'
+	@echo 'Usage option two: ./K.exe <inputfile> <outputfile>'
 
 KaratsubaMul.o: KaratsubaMul.c
-	gcc KaratsubaMul.c -c
+	gcc -O2 KaratsubaMul.c -c
 
 KaratsubaTest.o: KaratsubaTest.c
-	gcc KaratsubaTest.c -c
+	gcc -O2 KaratsubaTest.c -c
 
 ReadStrings.o: ReadStrings.c
-	gcc ReadStrings.c -c
+	gcc -O2 ReadStrings.c -c
 
 cleank:
 	rm KaratsubaMul.o KaratsubaTest.o
 
 cleanr:
 	rm ReadStrings.o
+
+compilegen:
+	gcc -O2 KaratsubaGener.c -o KG.exe
+	@echo 'Usage: ./KG.exe <numelem> <filename>'
 	
 run:
-	./K.exe Tests/MainTest.txt Tests/Results.txt
+	valgrind ./K.exe Tests/MainTest.txt Tests/Results.txt

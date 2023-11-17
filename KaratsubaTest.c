@@ -5,6 +5,10 @@
 #include "ReadStrings.h"
 #include "KaratsubaMul.h"
 
+//turn in on if you want to check answers
+//but remember not all tests have answers
+//#define CHECKON
+
 int test_karatsuba(char *main_test_name, char *result_file_name);
 
 int read_test_karatsuba_data(const char * const filename, int* * coef_a, int* * coef_b, int* * answers, int *N);
@@ -12,6 +16,13 @@ int read_test_karatsuba_data(const char * const filename, int* * coef_a, int* * 
 int check_answers(FILE* resultfile, int* coef_ans, int* answers, const int N);
 
 void reset_to_zero(int *arr, int n);
+
+static double diff(struct timespec start, struct timespec end);
+
+const int MICROSEC_AS_NSEC = 1000;
+const int SEC_AS_NSEC = 1000000000;
+
+#define SEC_AS_MICROSEC (SEC_AS_NSEC / MICROSEC_AS_NSEC)
 
 int main(int argv, char * *argc) {
     if (argv != 3) {
@@ -67,12 +78,14 @@ int test_karatsuba(char *main_test_name, char *result_file_name) {
         fprintf(result_file, "\t|------------------------------------------------\n");
         fprintf(result_file, "\t| N = %d    |  N^(log2(3)) = %lf\n", N, n_log2_3);
         fprintf(result_file, "\t|------------------------------------------------\n");
-        fprintf(result_file, "\t| Execution time: %lu.%.09ld \n", ts_current_k.tv_sec - ts_last_k.tv_sec, ts_current_k.tv_nsec - ts_last_k.tv_nsec);
+        fprintf(result_file, "\t| Execution time: %lf\n", diff(ts_last_k, ts_current_k));
         fprintf(result_file, "\t|------------------------------------------------\n");
-        fprintf(result_file, "\t| Time / N^(log2(3)) = %lf\n", (ts_current_k.tv_nsec - ts_last_k.tv_nsec) / n_log2_3);
+        fprintf(result_file, "\t| N^(log2(3)) / (Time * 1000000) = %lf\n", n_log2_3 / (diff(ts_last_k, ts_current_k) * 1000000));
         fprintf(result_file, "\t|------------------------------------------------\n");
 
+#ifdef CHECKON
         check_answers(result_file, coef_ans, answers, N);
+#endif
 
         fprintf(result_file, "\t|------------------------------------------------\n\n");
 
@@ -87,16 +100,18 @@ int test_karatsuba(char *main_test_name, char *result_file_name) {
         fprintf(result_file, "\t|------------------------------------------------\n");
         fprintf(result_file, "\t| N = %d       |  N * N = %d\n", N, N * N);
         fprintf(result_file, "\t|------------------------------------------------\n");
-        fprintf(result_file, "\t| Execution time: %lu.%.09ld \n", ts_current_u.tv_sec - ts_last_u.tv_sec, ts_current_u.tv_nsec - ts_last_u.tv_nsec);
+        fprintf(result_file, "\t| Execution time: %lf\n", diff(ts_last_u, ts_current_u));
         fprintf(result_file, "\t|------------------------------------------------\n");
-        fprintf(result_file, "\t| Time / (N * N) = %lf\n", (ts_current_u.tv_nsec - ts_last_u.tv_nsec) / pow(N, 2));
+        fprintf(result_file, "\t| (N * N) / (Time * 1000000) = %lf\n", pow(N, 2) / (diff(ts_last_u, ts_current_u) * 1000000));
         fprintf(result_file, "\t|------------------------------------------------\n");
 
+#ifdef CHECKON
         check_answers(result_file, coef_ans, answers, N);
+#endif
 
         fprintf(result_file, "\t|------------------------------------------------\n\n");
 
-        fprintf(result_file, "\tUsual time / Karatsuba time = %lf\n", (ts_current_u.tv_nsec - ts_last_u.tv_nsec) / (double) (ts_current_k.tv_nsec - ts_last_k.tv_nsec));
+        fprintf(result_file, "\tUsual time / Karatsuba time = %lf\n", diff(ts_last_u, ts_current_u) / diff(ts_last_k, ts_current_k));
         fprintf(result_file, "}\n\n");
 
         free(coef_ans);
@@ -152,15 +167,24 @@ int read_test_karatsuba_data(const char * const filename, int* * coef_a, int* * 
     for (int i = 0; i < N1; i++)
         check += fscanf(testfile, "%d", (*coef_b + i));
 
+#ifdef CHECKON
     for (int i = 0; i < N1; i++)
         check += fscanf(testfile, "%d", (*answers + i));
+#endif 
 
     fclose(testfile);
 
+#ifdef CHECKON
     if (check != N1 * 3 + 2) {
-        printf("failure while reading a file: check = %d and N1 * 3 + 2 = %d\n", check, N1 * 3 + 2);
+        printf("failure while reading a file %s: check = %d and N1 * 3 + 2 = %d\n", filename, check, N1 * 2 + 2);
         return -1;
     }
+#else 
+    if (check != N1 * 2 + 2) {
+        printf("failure while reading a file %s: check = %d and N1 * 3 + 2 = %d\n", filename, check, N1 * 2 + 2);
+        return -1;
+    }
+#endif
 
     return 0;
 }
@@ -183,3 +207,19 @@ void reset_to_zero(int *arr, int n) {
         arr[i] = 0;
 }
 
+static double diff(struct timespec start, struct timespec end) {
+    struct timespec temp;
+
+    if (end.tv_nsec - start.tv_nsec < 0) {
+        temp.tv_sec = end.tv_sec - start.tv_sec - 1;
+        temp.tv_nsec = SEC_AS_NSEC + end.tv_nsec - start.tv_nsec;
+
+    } else {
+        temp.tv_sec = end.tv_sec - start.tv_sec;
+        temp.tv_nsec = end.tv_nsec - start.tv_nsec;
+    }
+
+    double msec = temp.tv_sec * SEC_AS_MICROSEC + temp.tv_nsec / MICROSEC_AS_NSEC;
+    
+    return msec / SEC_AS_MICROSEC;
+}
